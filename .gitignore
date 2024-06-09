@@ -1,0 +1,13 @@
+# Root-level ignores
+node_modules/
+dist/
+build/
+
+# Backend ignores
+/backend/node_modules/
+/backend/dist/
+
+# Frontend ignores
+/chess-frontend/node_modules/
+/chess-frontend/build/
+env.
