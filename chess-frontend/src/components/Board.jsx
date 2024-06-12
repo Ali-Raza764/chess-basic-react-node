@@ -7,30 +7,41 @@ import {
   PromotionSound,
   CheckSound,
   CheckmateSound,
+  CastlingSound,
 } from "../assets/sounds";
 import io from "socket.io-client";
 
 const socket = io("http://localhost:8000");
 
-export default function Board({ side, roomId }) {
+export default function Board({ side, roomId, move }) {
   const audioRef = useRef(null);
   const [currentSound, setCurrentSound] = useState(null);
   const chess = new Chess();
   const [game, setGame] = useState(chess);
-  const [position, setPosition] = useState("");
+  // const [position, setPosition] = useState("");
 
   useEffect(() => {
-    socket.on("makemove", (move) => {
-      console.log("Rwecieved Move Here in useEffect");
-      console.log(move);
-      const { from, to, promotion } = move;
-      game.move({ from, to, promotion });
+    try {
+      game.move(move);
       setGame(new Chess(game.fen()));
       controlSounds(move);
-    });
-  }, []);
+    } catch (error) {
+      return;
+    }
+  }, [move]);
 
   const makeMove = (sourceSquare, targetSquare, piece) => {
+    //* We have to stop the player from movuing opponent pieces so we check the side of the user and the piece they moved
+    //* The piece notaion is like wq, bq etc. We can split it to check the first part w or b for white and black
+    const movedPiceColor = piece[0]?.toLowerCase();
+    if (movedPiceColor === "w" && side === "black") {
+      // if the piece is white and the user is black then donot accept the move
+      console.log(movedPiceColor, side);
+      return null;
+    } else if (movedPiceColor === "b" && side === "white") {
+      // if the piece is black and the user is white then donot accept the move
+      return null;
+    }
     const move = game.move({
       from: sourceSquare,
       to: targetSquare,
@@ -38,7 +49,7 @@ export default function Board({ side, roomId }) {
     });
 
     if (move) {
-      socket.emit("move", move,  roomId);
+      socket.emit("move", move, roomId);
     }
 
     return move;
@@ -46,6 +57,7 @@ export default function Board({ side, roomId }) {
 
   function onDrop(sourceSquare, targetSquare, piece) {
     const move = makeMove(sourceSquare, targetSquare, piece);
+
     if (move === null) return "Invalid Move";
 
     controlSounds(move);
@@ -61,6 +73,8 @@ export default function Board({ side, roomId }) {
       playSound(capturePieceSound);
     } else if (move.promotion) {
       playSound(PromotionSound);
+    } else if (move.san === "O-O") {
+      playSound(CastlingSound);
     } else {
       playSound(SimpleMoveSound);
     }
@@ -86,9 +100,9 @@ export default function Board({ side, roomId }) {
         }}
         boardWidth={600}
         boardOrientation={side}
-        getPositionObject={(position) => {
-          setPosition(position);
-        }}
+        // getPositionObject={(position) => {
+        //   setPosition(position);
+        // }}
       />
     </section>
   );

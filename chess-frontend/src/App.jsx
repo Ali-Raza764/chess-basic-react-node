@@ -8,6 +8,8 @@ const App = () => {
   const [side, setSide] = useState(null);
   const [roomId, setRoomId] = useState(null);
   const [players, setPlayers] = useState(0);
+  const [connId, setConnId] = useState("");
+  const [move, setMove] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,11 +20,11 @@ const App = () => {
       if (response.success) {
         setSide(response.side);
 
-        setRoomId(response.roomId);
+        setRoomId(roomId);
 
         setPlayers(response.usersInRoom);
 
-        alert("Joined You are " + response.side);
+        alert("Joined, You are " + response.side);
       } else {
         alert(response.message || "Failed to join room");
       }
@@ -30,20 +32,21 @@ const App = () => {
   };
 
   useEffect(() => {
-    socket.on("userconnected", () => {
-      console.log(players);
-      setPlayers((prevPlayers) => prevPlayers + 1);
+    socket.on("userconnected", (response) => {
+      setPlayers(response.users);
     });
-    socket.on("user_left", () => {
-      console.log(players);
-      setPlayers((prevPlayers) => prevPlayers - 1);
+    socket.on("connect", () => {
+      setConnId(socket.id);
+    });
+    socket.on("makemove", (move) => {
+      setMove(move);
     });
   }, []);
 
   return (
     <main className="w-full min-h-screen flex justify-between">
       {players === 2 && (
-        <Board side={side} key={socket.id + side} roomId={roomId} />
+        <Board side={side} key={socket.id + side} roomId={roomId} move={move} />
       )}
       <section className="w-full p-6">
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
@@ -58,6 +61,7 @@ const App = () => {
           </button>
         </form>
         <div>{side && <h1>players Joined: {players}</h1>}</div>
+        <h1>This is a Chat Server {connId}</h1>
       </section>
     </main>
   );
