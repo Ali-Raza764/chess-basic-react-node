@@ -15,6 +15,7 @@ import { socket } from "../../socket";
 import PreviousMoves from "./PreviousMoves";
 import Users from "./Users";
 import GameActions from "./GameActions";
+import NewGame from "../NewGame";
 
 export default function Board({ side, roomId, players }) {
   const audioRef = useRef(null);
@@ -30,14 +31,30 @@ export default function Board({ side, roomId, players }) {
       setGameover(true);
     });
     socket.on("makemove", (move) => {
-      console.log(move);
-
-      const madeMove = game.move(move);
-      setGame(new Chess(game.fen()));
-      setMoves([...moves, madeMove]);
-      controlSounds(madeMove);
+      setOpponentPieces(move);
     });
+
+    return () => {
+      socket.off("gameover");
+      socket.off("makemove");
+    };
   }, [game]);
+
+  const setOpponentPieces = (move) => {
+    console.log("making move for opponent", move);
+    try {
+      const madeMove = game.move({
+        from: move.from,
+        to: move.to,
+        promotion: move.promotion || "q",
+      });
+      setGame(new Chess(game.fen()));
+      setMoves((prevMoves) => [...prevMoves, madeMove]);
+      controlSounds(madeMove);
+    } catch (error) {
+      console.error("Invalid move:", move);
+    }
+  };
 
   const makeMove = (sourceSquare, targetSquare, piece) => {
     //* We have to stop the player from moving opponent pieces so we check the side of the user and the piece they moved
@@ -78,6 +95,7 @@ export default function Board({ side, roomId, players }) {
 
   const controlSounds = (move) => {
     if (game.isCheckmate()) {
+      setGameover(true);
       playSound(CheckmateSound);
     } else if (game.isCheck()) {
       playSound(CheckSound);
@@ -113,10 +131,10 @@ export default function Board({ side, roomId, players }) {
         boardWidth={600}
         boardOrientation={side}
       />
-      <div className="h-full w-full">
+      <div className="h-full w-full flex flex-col gap-3">
         <PreviousMoves moves={moves} />
         <Users players={players} />
-        {isReady && <GameActions />}
+        {isReady && !gameover && <GameActions />}
         {gameover && <NewGame />}
       </div>
     </section>

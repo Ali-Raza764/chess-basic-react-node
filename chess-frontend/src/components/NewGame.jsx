@@ -16,6 +16,7 @@ const NewGame = () => {
         navigate(
           `/play?roomId=${response.roomId}&side=${response.side}&name=${response.name}`
         );
+        
       } else {
         console.error(response.message);
       }

@@ -33,7 +33,12 @@ const Play = () => {
 
   return (
     <div className="h-screen w-full px-6 py-3">
-      <Board side={side} roomId={roomId} players={players} />
+      <Board
+        side={side}
+        roomId={roomId}
+        players={players}
+        key={roomId + side}
+      />
     </div>
   );
 };
