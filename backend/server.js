@@ -43,7 +43,6 @@ io.on("connection", (socket) => {
     });
 
     // Join the room
-    console.log("Joining Room For", socket.id);
     socket.join(roomId);
 
     // Emit userconnected event to all users in the room
@@ -60,6 +59,11 @@ io.on("connection", (socket) => {
       name: playerName,
       usersInRoom: rooms[roomId].players.length,
     });
+  });
+
+  socket.on("rematch", (roomId) => {
+    console.log("Server Rematch Requested");
+    io.to(roomId).emit("sendrematch");
   });
 
   socket.on("getUsers", (roomId, callback) => {
@@ -81,12 +85,16 @@ io.on("connection", (socket) => {
   });
 
   socket.on("move", (move, roomId) => {
-    console.log(move);
     socket.to(roomId).emit("makemove", move);
   });
 
   socket.on("gameover", (roomId) => {
     socket.to(roomId).emit("gameover");
+  });
+
+  socket.on("resign", (roomId, side) => {
+    console.log(roomId, side);
+    io.to(roomId).emit("sendresign", { side, type: "Resigned" });
   });
 
   socket.on("disconnect", () => {
@@ -97,9 +105,10 @@ io.on("connection", (socket) => {
         (player) => player.id === socket.id
       );
       if (playerIndex !== -1) {
+        const player = room.players[playerIndex]; // Capture the player object
         room.players.splice(playerIndex, 1);
         // Trigger event for user leaving the room
-        io.to(roomId).emit("user_left", { id: socket.id });
+        io.to(roomId).emit("sendresign", { side: player.side, type: "Left" });
         // If the room is empty, delete it
         if (room.players.length === 0) {
           delete rooms[roomId];

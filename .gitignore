@@ -10,4 +10,27 @@ build/
 # Frontend ignores
 /chess-frontend/node_modules/
 /chess-frontend/build/
-env.
+/chess-frontend/env.local
+# Logs
+/chess-frontend/logs
+/chess-frontend/*.log
+/chess-frontend/npm-debug.log*
+/chess-frontend/yarn-debug.log*
+/chess-frontend/yarn-error.log*
+/chess-frontend/pnpm-debug.log*
+/chess-frontend/lerna-debug.log*
+
+/chess-frontend/dist
+/chess-frontend/dist-ssr
+/chess-frontend/*.local
+
+# Editor directories and files
+/chess-frontend/.vscode/*
+/chess-frontend/!.vscode/extensions.json
+/chess-frontend/.idea
+/chess-frontend/.DS_Store
+/chess-frontend/*.suo
+/chess-frontend/*.ntvs*
+/chess-frontend/*.njsproj
+/chess-frontend/*.sln
+/chess-frontend/*.sw?

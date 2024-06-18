@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
+import { useMediaQuery } from "react-responsive";
 import {
   capturePieceSound,
   SimpleMoveSound,
@@ -8,28 +9,49 @@ import {
   CheckSound,
   CheckmateSound,
   CastlingSound,
-} from "../../assets/sounds";
+} from "../../assets/sounds"; //Board Sounds
 import { socket } from "../../socket";
 
 // Other Components
 import PreviousMoves from "./PreviousMoves";
 import Users from "./Users";
+import Clock from "./Clock";
+import RematchButton from "./RematchButton";
 import GameActions from "./GameActions";
-import NewGame from "../NewGame";
+import CreateGame from "../CreateGame";
 
-export default function Board({ side, roomId, players }) {
+export default function Board({ side, roomId, players, time }) {
+  const chess = new Chess();
   const audioRef = useRef(null);
   const [currentSound, setCurrentSound] = useState(null);
-  const chess = new Chess();
   const [game, setGame] = useState(chess);
   const [moves, setMoves] = useState([]);
   const [gameover, setGameover] = useState(false);
+  const [isWhitePaused, setIsWhitePaused] = useState(false);
+  const [isBlackPaused, setIsBlackPaused] = useState(true);
+  const [winner, setWinner] = useState(null);
+  const [looser, setLooser] = useState(null);
+  const [message, setMessage] = useState("");
+  const isLargeScreen = useMediaQuery({ minWidth: 768 });
   const isReady = players.length === 2 ? true : false;
 
   useEffect(() => {
-    socket.on("gameover", () => {
+    socket.on("sendresign", (res) => {
+      console.log(res);
       setGameover(true);
+      setIsBlackPaused(true);
+      setIsWhitePaused(true);
+      setMessage(res.type);
+      if (res.side === "white") {
+        setWinner("Black");
+        setLooser("White");
+      }
+      if (res.side === "black") {
+        setWinner("White");
+        setLooser("Black");
+      }
     });
+
     socket.on("makemove", (move) => {
       setOpponentPieces(move);
     });
@@ -41,7 +63,7 @@ export default function Board({ side, roomId, players }) {
   }, [game]);
 
   const setOpponentPieces = (move) => {
-    console.log("making move for opponent", move);
+    if (gameover) return;
     try {
       const madeMove = game.move({
         from: move.from,
@@ -49,6 +71,15 @@ export default function Board({ side, roomId, players }) {
         promotion: move.promotion || "q",
       });
       setGame(new Chess(game.fen()));
+
+      //* Handle Time Clock
+      if (side === "white") {
+        setIsWhitePaused(false);
+        setIsBlackPaused(true);
+      } else {
+        setIsWhitePaused(true);
+        setIsBlackPaused(false);
+      }
       setMoves((prevMoves) => [...prevMoves, madeMove]);
       controlSounds(madeMove);
     } catch (error) {
@@ -75,6 +106,15 @@ export default function Board({ side, roomId, players }) {
 
     if (move) {
       socket.emit("move", move, roomId);
+
+      //* Handle Time Clock
+      if (side === "white") {
+        setIsWhitePaused(true);
+        setIsBlackPaused(false);
+      } else {
+        setIsWhitePaused(false);
+        setIsBlackPaused(true);
+      }
       setMoves([...moves, move]);
     }
 
@@ -82,7 +122,7 @@ export default function Board({ side, roomId, players }) {
   };
 
   function onDrop(sourceSquare, targetSquare, piece) {
-    if (!isReady) {
+    if (!isReady || gameover) {
       return;
     }
     const move = makeMove(sourceSquare, targetSquare, piece);
@@ -96,6 +136,8 @@ export default function Board({ side, roomId, players }) {
   const controlSounds = (move) => {
     if (game.isCheckmate()) {
       setGameover(true);
+      setIsBlackPaused(true);
+      setIsWhitePaused(true);
       playSound(CheckmateSound);
     } else if (game.isCheck()) {
       playSound(CheckSound);
@@ -118,24 +160,84 @@ export default function Board({ side, roomId, players }) {
   };
 
   return (
-    <section className="w-full h-full flex items-center">
-      <audio ref={audioRef} src={currentSound} preload="auto" autoPlay />
-      <Chessboard
-        id="PlayVsRandom"
-        position={game.fen()}
-        onPieceDrop={onDrop}
-        customBoardStyle={{
-          borderRadius: "4px",
-          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
-        }}
-        boardWidth={600}
-        boardOrientation={side}
-      />
-      <div className="h-full w-full flex flex-col gap-3">
+    <section className="w-full h-full flex flex-wrap gap-4 items-center justify-center">
+      <div className="w-full lg:w-[50vw] flex flex-col">
+        <audio ref={audioRef} src={currentSound} preload="auto" autoPlay />
+        {isLargeScreen && (
+          <Chessboard
+            id="PlayVsRandom"
+            position={game.fen()}
+            onPieceDrop={onDrop}
+            customBoardStyle={{
+              borderRadius: "4px",
+              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
+            }}
+            boardOrientation={side}
+            boardWidth={600}
+          />
+        )}
+        {!isLargeScreen && (
+          <Chessboard
+            id="PlayVsRandom"
+            position={game.fen()}
+            onPieceDrop={onDrop}
+            customBoardStyle={{
+              borderRadius: "4px",
+              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
+            }}
+            boardOrientation={side}
+          />
+        )}
+
+        <div className="lg:hidden">
+          {/* Clock For Mobile Devices */}
+          <Users players={players} />
+          <div className="flex items-center justify-between">
+            <Clock
+              initialTime={time}
+              isPaused={isWhitePaused}
+              setGameover={setGameover}
+            />
+            <Clock
+              initialTime={time}
+              isPaused={isBlackPaused}
+              setGameover={setGameover}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="h-full w-full lg:w-full flex flex-1 flex-col gap-3">
         <PreviousMoves moves={moves} />
-        <Users players={players} />
-        {isReady && !gameover && <GameActions />}
-        {gameover && <NewGame />}
+        <div className="flex flex-col h-full">
+          <div className={"users hidden lg:block"}>
+            <Users players={players} />
+            <div className="flex items-center justify-between">
+              <Clock
+                initialTime={time}
+                isPaused={isWhitePaused}
+                setGameover={setGameover}
+              />
+              <Clock
+                initialTime={time}
+                isPaused={isBlackPaused}
+                setGameover={setGameover}
+              />
+            </div>
+          </div>
+          {gameover && (
+            <div className="mt-4">
+              <p className="text-lg font-sans">
+                {winner} Won! {looser} {message}
+              </p>
+              <div className="flex items-center gap-4 mt-3">
+                <CreateGame seconds={time} name={"New"} />
+                {message === "resigned" && <RematchButton roomId={roomId} />}
+              </div>
+            </div>
+          )}
+          {!gameover && <GameActions roomId={roomId} side={side} />}
+        </div>
       </div>
     </section>
   );
