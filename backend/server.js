@@ -5,9 +5,24 @@ const io = require("socket.io")(8000, {
 });
 
 const rooms = {}; // Assuming you have this global object to keep track of rooms
+let online_players = 0;
 
 io.on("connection", (socket) => {
+  online_players += 1;
+  io.emit("updateOnlinePlayers", online_players);
+
   socket.on("create_room", (roomId, playerName, callback) => {
+    // Check If the user Already exists in the room
+    let isSamePlayer = false;
+    rooms[roomId]?.players?.forEach((player) => {
+      if (player.id === socket.id) {
+        isSamePlayer = true;
+      }
+    });
+    if (isSamePlayer) {
+      return;
+    }
+
     // Check if the room already exists and is full
     if (rooms[roomId] && rooms[roomId].players.length === 2) {
       callback({ success: false, message: "Room is full" });
@@ -28,6 +43,7 @@ io.on("connection", (socket) => {
     });
 
     // Join the room
+    console.log("Joining Room For", socket.id);
     socket.join(roomId);
 
     // Emit userconnected event to all users in the room
@@ -47,7 +63,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("getUsers", (roomId, callback) => {
-    console.log(roomId);
     if (rooms[roomId]) {
       socket.to(roomId).emit("userconnected", {
         success: true,
@@ -69,7 +84,7 @@ io.on("connection", (socket) => {
     console.log(move);
     socket.to(roomId).emit("makemove", move);
   });
-  
+
   socket.on("gameover", (roomId) => {
     socket.to(roomId).emit("gameover");
   });
@@ -92,5 +107,7 @@ io.on("connection", (socket) => {
         break;
       }
     }
+    online_players -= 1;
+    io.emit("updateOnlinePlayers", online_players);
   });
 });
