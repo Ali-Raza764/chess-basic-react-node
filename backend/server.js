@@ -6,6 +6,17 @@ const io = require("socket.io")(8000, {
 
 const rooms = {}; // Assuming you have this global object to keep track of rooms
 let online_players = 0;
+const match_requested_players = [];
+
+function findMatchingPlayer(queue, playerData) {
+  for (const player of queue) {
+    if (player.seconds === playerData.seconds && player.id !== playerData.id) {
+      return player;
+    }
+  }
+
+  return null; // No suitable match found
+}
 
 io.on("connection", (socket) => {
   online_players += 1;
@@ -59,6 +70,38 @@ io.on("connection", (socket) => {
       name: playerName,
       usersInRoom: rooms[roomId].players.length,
     });
+  });
+
+  socket.on("matching_queue", (data, callback) => {
+    // When a user calls this push them into the requested match players array
+    match_requested_players.push(data);
+
+    const potentialMatch = findMatchingPlayer(match_requested_players, data);
+    if (potentialMatch) {
+      console.log("player1Id:", data.id, "Player2Id", potentialMatch.id);
+      const roomId =
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
+      // Remove The Players from the macthing list
+      match_requested_players.splice(match_requested_players.indexOf(data), 1);
+      match_requested_players.splice(
+        match_requested_players.indexOf(potentialMatch),
+        1
+      );
+
+      io.to(socket.id).emit("game_found", {
+        roomId: roomId,
+        seconds: data.seconds,
+      });
+      io.to(potentialMatch.id).emit("game_found", {
+        roomId: roomId,
+        seconds: potentialMatch.seconds,
+      });
+    } else {
+      // No match found yet, queue the player
+      callback({ success: true, message: "Waiting for opponent..." });
+    }
   });
 
   socket.on("rematch", (roomId) => {

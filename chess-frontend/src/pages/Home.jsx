@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
 import CreateGame from "../components/CreateGame";
+import PLayWithFriend from "../components/PLayWithFriend";
 
 const Home = () => {
   const [onlinePlayers, setOnlinePlayers] = useState(0);
@@ -44,14 +45,23 @@ const Home = () => {
 
   return (
     <main className="w-full min-h-screen p-6 flex flex-col gap-6">
-      <section>
+      <section className="w-full">
         <h1 className="text-3xl font-bold font-sans">Welcome to Chessify</h1>
         <p>Players Online: {onlinePlayers}</p>
       </section>
       <section className="w-full flex gap-6 items-center justify-center flex-wrap">
         {timeFormats.map((format) => {
-          return <CreateGame name={format.type} seconds={format.seconds} />;
+          return (
+            <CreateGame
+              name={format.type}
+              seconds={format.seconds}
+              key={format.id}
+            />
+          );
         })}
+      </section>
+      <section className="w-full p-3">
+        <PLayWithFriend timeFormats={timeFormats} />
       </section>
     </main>
   );

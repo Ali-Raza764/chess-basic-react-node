@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect, useState } from "react";
-import Board from "../components/Board";
+import React, { Suspense, lazy, useEffect, useState } from "react";
+const Board = lazy(() => import("../components/Board"));
 import { useSearchParams } from "react-router-dom";
 import { socket } from "../socket";
 import { FaClipboard } from "react-icons/fa";
@@ -18,14 +18,12 @@ const Play = () => {
     socket.emit("create_room", roomId, "Guest", (response) => {
       if (response.success) {
         setData(response);
-        console.log("Created Room", response);
       } else {
         setError(response.message);
       }
     });
 
     socket.on("sendrematch", () => {
-      console.log("Rematch Requested");
       setRematch(!rematch);
     });
 
@@ -48,14 +46,9 @@ const Play = () => {
   }, [roomId]);
 
   const copyToClipboard = (text) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        console.log(`Text "${text}" copied to clipboard`);
-      })
-      .catch((err) => {
-        console.error("Failed to copy text: ", err);
-      });
+    navigator.clipboard.writeText(text).catch((err) => {
+      console.error("Failed to copy text: ", err);
+    });
   };
 
   if (players.length < 2) {
@@ -76,7 +69,6 @@ const Play = () => {
       </div>
     );
   }
-  console.log(timeSesonds);
 
   return (
     <div className="h-screen w-full lg:px-6 py-3">

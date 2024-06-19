@@ -1,15 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RxLightningBolt } from "react-icons/rx";
-import { FaClock } from "react-icons/fa";
+import { FaClock, FaSpinner } from "react-icons/fa";
 import { FaGraduationCap } from "react-icons/fa";
+import { socket } from "../socket";
 
 const CreateGame = ({ name, seconds }) => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    socket.on("game_found", (data) => {
+      setLoading(false);
+      navigate(`/play?roomId=${data.roomId}&time=${data.seconds}`);
+    });
+
+    return () => {
+      socket.off("game_found");
+    };
+  }, []);
 
   const handleClick = () => {
-    const roomId = parseInt(Math.random() * 2000241210 * Math.random());
-    navigate(`/play?roomId=${roomId}&time=${seconds}`);
+    //* The matching socket will call the game_found socket in the useEffect
+    setLoading(true);
+    socket.emit(
+      "matching_queue",
+      { id: socket.id, seconds: seconds },
+      (response) => {
+        response.success && setMessage(response.message);
+      }
+    );
   };
 
   // Determine which icon to display based on the game type (name)
@@ -33,7 +54,12 @@ const CreateGame = ({ name, seconds }) => {
       style={{ backdropFilter: "brightness(0.8) saturate(120%)", zIndex: 10 }}
     >
       <span className="flex items-center gap-3 text-xl">
-        {renderIcon()} {/* Display the appropriate icon */}
+        {!loading ? (
+          renderIcon()
+        ) : (
+          <FaSpinner size={30} className="animate-spin" />
+        )}{" "}
+        {/* Display the appropriate icon */}
         {name}
       </span>
       <span className="text-4xl font-bold w-full flex gap-3 items-center justify-center">

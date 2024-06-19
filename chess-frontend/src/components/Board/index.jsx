@@ -37,7 +37,6 @@ export default function Board({ side, roomId, players, time }) {
 
   useEffect(() => {
     socket.on("sendresign", (res) => {
-      console.log(res);
       setGameover(true);
       setIsBlackPaused(true);
       setIsWhitePaused(true);
@@ -232,7 +231,7 @@ export default function Board({ side, roomId, players, time }) {
               </p>
               <div className="flex items-center gap-4 mt-3">
                 <CreateGame seconds={time} name={"New"} />
-                {message === "resigned" && <RematchButton roomId={roomId} />}
+                {message === "Resigned" && <RematchButton roomId={roomId} />}
               </div>
             </div>
           )}
